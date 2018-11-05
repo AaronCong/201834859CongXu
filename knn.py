@@ -5,8 +5,6 @@ import math
 import re
 import operator
 import time
-from numba import jit
-from sklearn.neighbors import KNeighborsClassifier
 
 
 num_folds = 4
@@ -24,13 +22,12 @@ y_train_folds = np.split(y, num_folds)
 k_to_accuracies = {}
 print('词典大小：', w.shape[1])
 
-@jit
 def similar(test, train): #计算两个向量的余弦相似度
 	num = float(np.dot(test.T, train))
 	denom = np.linalg.norm(test) * np.linalg.norm(train)
 	return num/(float(denom))
 
-@jit
+
 def predict(train, train_label, test, test_label, k):
 	result = np.zeros([test.shape[1],])
 	#for i in range(train.shape[0]):
@@ -46,10 +43,6 @@ def predict(train, train_label, test, test_label, k):
 		c = Counter(closest_y)
 		result[i]=c.most_common(1)[0][0]
 			
-		if (result[i] == test_label[i]):
-			print(True, test_label[i])
-		else:
-			print(False, test_label[i])
 	return result
 
 for k in proba_k:
@@ -66,19 +59,10 @@ for k in proba_k:
 
 		Xtr = np.reshape(Xtr.transpose((1,0,2)), (w.shape[0], -1))
 		ytr = np.reshape(ytr, (-1))
-		#Xte = np.reshape(Xte, (w.shape[0], int(w.shape[1] / 4)))
-		#yte = np.reshape(yte, (y.shape[0], int(w.shape[1] / 4)))
-		#print(Xtr.shape, ytr.shape)
-		knn = KNeighborsClassifier(n_neighbors=k) 
-		knn.fit(Xtr.T, ytr)  
-		yte_pred = knn.predict(Xte[:,0:100].T) 
-		#yte_pred = predict(Xtr, ytr, Xte, yte, k)
-		#accuracy = np.sum(yte_pred == yte, dtype=float)/100  
-		score=knn.score(Xte[:,0:100].T,yte[0:100],sample_weight=None)
-		score += 0.1
-		#print(accuracy)
-		k_to_accuracies[k][i] = score
-		print('模型在第',i+1,'组数据上的准确率为：', score)
+
+		yte_pred = predict(Xtr, ytr, Xte, yte, k)
+		accuracy = np.sum(yte_pred == yte, dtype=float)/len(yte)  
+
+		print('模型在第',i+1,'组数据上的准确率为：', accuracy)
 	
 	print('交叉验证的平均准确率为：',np.mean(k_to_accuracies[k]))
-np.save('k_to_accuracies.npy',k_to_accuracies)
